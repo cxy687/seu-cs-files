@@ -1,0 +1,27 @@
+.8086           ;使用8086/8088处理器
+.MODEL SMALL    ;内存模型
+.DATA
+.STACK
+.CODE
+START:
+    MOV CX,0403H
+    MOV BX,0806H; CX:BX中存放非压缩BCD码表示的十进制数4386
+    MOV AL,100
+    MUL CL
+    MOV DI,AX;3*100 
+    MOV AX,1000
+    AND CX,0FF00H;保留高八位
+    MOV DX,CX
+    MOV CL,8
+    SHR DX,CL;逻辑右移八位
+    MOV CX,DX
+    MUL CX;结果在DX:AX中
+    ADD DI,AX;4*1000
+    MOV AL,10
+    MUL BH
+    ADD DI,AX;8*10
+    AND BX,00FFH
+    ADD DI,BX;6
+    MOV AH,4CH
+    INT 21H
+END START

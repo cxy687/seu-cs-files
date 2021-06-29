@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+
+    <style type="text/css">
+        body, html, #all {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            margin: 0;
+            font-family: "宋体";
+        }
+
+        #header {
+            position: absolute;
+            background-color: rgb(238, 83, 130);
+            color: white;
+            text-align: center;
+            top:0px;
+            height: 50px;
+            width: 100%;
+            padding: 1px;
+        }
+        #view{
+            position: absolute;
+            top:55px;
+            left: 300px;
+            height: 40px;
+        }
+        #sp{
+            position: absolute;
+            top:80px;
+            width: 200px; 
+            left: 5px;
+            padding: 8px;
+            text-align: center;
+            }
+        #move{
+            position: absolute;
+            top: 50px;
+            width: 200px;
+            left: 5px;
+            padding: 6px;
+            text-align: center;
+        }
+        #box{
+            position: absolute;
+            top:110px;
+            left:5px;
+            padding: 8px;
+            width:200px;
+            height:9px;
+            text-align: center;
+            color: #fff;
+        }
+        #ctr{
+            position: absolute;
+            top:280px;
+            left: 5px;
+            width: 200px; 
+            padding: 8px;
+            text-align: center;
+            color: #fff;
+        }
+        #footer {
+            background-color: rgb(238, 83, 130);
+            color: white;
+            text-align: center;
+            padding: 2px;
+            position: absolute;
+            width: 100%;
+            bottom: 0;
+        }
+        #note{
+            position: absolute;
+            bottom:15px;
+            width: 200px; 
+            padding: 8px;
+            text-align: center;
+            color: #fff;
+        }
+    </style>
+
+    <title>dolphin</title>
+
+    <script src="../node_modules/three/build/three.js"></script>
+    <script src="../node_modules/three/examples/js/loaders/OBJLoader.js"></script>
+    <script src="../node_modules/three/examples/js/loaders/MTLLoader.js"></script>
+    <!-- <script src="../node_modules/three/examples/js/loaders/TGALoader.js"></script> -->
+
+</head>
+<body>
+
+    <div id="header">
+        <h3>dolphin 2.0</h1>
+    </div>
+    <div id="move">
+		<button id="dive">跳水/停止</button>
+	</div>
+    <div id="sp">
+		<button id="showA">显示坐标轴</button>
+		<button id="hideA">隐藏坐标轴</button>
+    </div>
+    <div id="view">
+        <button id="self">聚焦多面体</button>
+        <button id="initpoint">聚焦原点</button>
+    </div>
+    <!--物体坐标系操作说明-->
+    <div id="box">
+
+        <div class="control">
+        动物自身坐标系操作：<br>
+            <button id = "turnLeft"> 水平转左（绕动物z轴）</button>
+            <button id = "turnRight">水平转右（绕动物z轴）</button>
+            <button id = "turnUp">垂直仰身（绕动物x轴）</button>
+            <button id = "turnDown">垂直俯身（绕动物x轴）</button>
+            <button id = "advance">前进（绕y轴）</button>
+            <button id = "back">后退（绕y轴）</button>
+        </div>
+    </div>
+    <div id="ctr">
+        世界坐标系操作：
+        <button id="up">向上平移</button>
+        <button id="down">向下平移</button>
+        <br/>
+        <button id="left">向左平移</button>
+        <button id="right">向右平移</button>
+        <br/>
+        <button id="forward">向前平移</button>
+        <button id="backward">向后平移</button>
+        <br/>
+        <button id="xRotate">绕X轴旋转</button>
+        <button id="yRotate">绕Y轴旋转</button>
+        <br/>
+        <button id="zRotate">绕Z轴旋转</button>
+        <button id="reset">回到原位</button>
+    </div>
+    <div id="note">
+        快捷键说明：<br/>
+        场景漫游
+        ↑ --- 向上
+        ↓ --- 向下<br/>
+        ← --- 向左
+        → --- 向右<br/>
+        光源位置调整：<br>
+		z轴方向  900 <input id="sliderZ" type="range" min="900" max="1100" step="10" value="1000" /> 1100
+		<br>
+		x轴方向 -400 <input id="sliderX" type="range" min="-400" max="400" step="10" value="0" /> 400
+		<br>
+		y轴方向 -200 <input id="sliderY" type="range" min="-200" max="200" step="10" value="0" /> 200
+
+    </div>
+    <div id="container"></div>
+
+    <script type="module">
+        import * as THREE from '../node_modules/three/build/three.module.js';
+        import { GUI } from '../node_modules/three/examples/jsm/libs/dat.gui.module.js';
+        import { DDSLoader } from '../node_modules/three/examples/jsm/loaders/DDSLoader.js';
+        import { MTLLoader } from '../node_modules/three/examples/jsm/loaders/MTLLoader.js';
+        import { OBJLoader } from '../node_modules/three/examples/jsm/loaders/OBJLoader.js';
+        import { OrbitControls } from '../node_modules/three/examples/jsm/controls/OrbitControls.js';
+        import Stats from '../node_modules/three/examples/jsm/libs/stats.module.js';
+        import { Water } from '../node_modules/three/examples/jsm/objects/Water.js';
+        import { Sky } from '../node_modules/three/examples/jsm/objects/Sky.js';
+
+
+        let camera, scene, renderer;
+        let container, stats;
+		let water, sun, dolphin, mesh1, mesh2;
+        let controls;
+        var dive = false;
+
+
+        let windowHalfX = window.innerWidth / 2;
+        let windowHalfY = window.innerHeight / 2;
+
+        
+        init();
+        initControls();
+        initModel();
+        light();
+        animate();
+
+        function init(){
+            container = document.getElementById('container');
+            document.body.appendChild( container );
+
+            renderer = new THREE.WebGLRenderer({ alpha:true, antialias: true } );
+            renderer.setPixelRatio( window.devicePixelRatio );
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            renderer.shadowMap.enabled = true;//阴影效果
+            container.appendChild( renderer.domElement );
+
+            
+            
+            camera = new THREE.PerspectiveCamera( 55, window.innerWidth / window.innerHeight, 1, 2000 );
+            //camera.position.z = 250;
+            camera.position.set( 0, 30, 100 );
+            //camera.target = new THREE.Vector3( 0, 0, 0 );//设置相机所看的位置
+
+            // scene
+
+            scene = new THREE.Scene();
+
+            const ambientLight = new THREE.AmbientLight( 0xffffff );
+            scene.add( ambientLight );
+
+            const pointLight = new THREE.PointLight( 0xffffff );
+            camera.add( pointLight );
+            scene.add( camera );
+        }
+
+        function initModel() {
+
+            var clock = new THREE.Clock();
+
+            //Sun
+            sun = new THREE.Vector3();
+
+            // Water
+			const waterGeometry = new THREE.PlaneBufferGeometry( 10000, 10000 );
+
+            water = new Water(
+					waterGeometry,
+					{
+						textureWidth: 512,
+						textureHeight: 512,
+						waterNormals: new THREE.TextureLoader().load( '../obj/waternormals.jpg', function ( texture ) {
+
+							texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+
+						} ),
+						alpha: 1.0,
+						sunDirection: new THREE.Vector3(),
+						sunColor: 0xffffff,
+						waterColor: 0x001e0f,
+						distortionScale: 3.7,
+						fog: scene.fog !== undefined
+					}
+				);
+            water.rotation.x = - Math.PI / 2;
+
+            scene.add( water );
+
+            // Skybox
+
+				const sky = new Sky();
+				sky.scale.setScalar( 10000 );
+				scene.add( sky );
+
+				const skyUniforms = sky.material.uniforms;
+
+				skyUniforms[ 'turbidity' ].value = 10;//浑浊度
+				skyUniforms[ 'rayleigh' ].value = 2;//瑞利散射
+				skyUniforms[ 'mieCoefficient' ].value = 0.005;//散射系数
+				skyUniforms[ 'mieDirectionalG' ].value = 0.8;
+
+				const parameters = {
+					inclination: 0.49,
+					azimuth: 0.205
+				};
+
+				const pmremGenerator = new THREE.PMREMGenerator( renderer );
+                
+				function updateSun() {
+
+                const theta = Math.PI * ( parameters.inclination - 0.5 );
+                const phi = 2 * Math.PI * ( parameters.azimuth - 0.5 );
+
+                sun.x = Math.cos( phi );
+                sun.y = Math.sin( phi ) * Math.sin( theta );
+                sun.z = Math.sin( phi ) * Math.cos( theta );
+
+                sky.material.uniforms[ 'sunPosition' ].value.copy( sun );
+                water.material.uniforms[ 'sunDirection' ].value.copy( sun ).normalize();
+
+                scene.environment = pmremGenerator.fromScene( sky ).texture;
+
+                }
+
+                updateSun();
+
+                const geometry1 = new THREE.SphereBufferGeometry( 15, 32, 32 );
+                geometry1.translate(-70,0,0);
+                //color: 0x1a0d00
+				const material1 = new THREE.MeshPhongMaterial( {color: 0x156289} );
+
+                mesh1 = new THREE.Mesh( geometry1, material1 );
+                scene.add( mesh1 );
+
+                //
+                const geometry2 = new THREE.DodecahedronBufferGeometry(15);
+                geometry2.translate( 70, 0, 0 );
+                const material2 = new THREE.MeshLambertMaterial( {color: 0x804000 } );
+                mesh2 = new THREE.Mesh( geometry2, material2);
+                scene.add( mesh2 );
+
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+                // GUI
+
+				const gui = new GUI();
+
+                const folderSky = gui.addFolder( 'Sky' );
+                folderSky.add( parameters, 'inclination', 0, 0.5, 0.0001 ).onChange( updateSun );
+                folderSky.add( parameters, 'azimuth', 0, 1, 0.0001 ).onChange( updateSun );
+                folderSky.open();
+
+                const waterUniforms = water.material.uniforms;
+
+                const folderWater = gui.addFolder( 'Water' );
+                folderWater.add( waterUniforms.distortionScale, 'value', 0, 8, 0.1 ).name( 'distortionScale' );
+                folderWater.add( waterUniforms.size, 'value', 0.1, 10, 0.1 ).name( 'size' );
+                folderWater.add( waterUniforms.alpha, 'value', 0.9, 1, .001 ).name( 'alpha' );
+                folderWater.open();
+				
+            // model
+
+            const onProgress = function ( xhr ) {
+
+                if ( xhr.lengthComputable ) {
+
+                    const percentComplete = xhr.loaded / xhr.total * 100;
+                    console.log( Math.round( percentComplete, 2 ) + '% downloaded' );
+
+                }
+
+            };
+
+            const onError = function () { };
+
+            const manager = new THREE.LoadingManager();
+            manager.addHandler( /\.dds$/i, new DDSLoader() );
+
+            // comment in the following line and import TGALoader if your asset uses TGA textures
+            // manager.addHandler( /\.tga$/i, new TGALoader() );
+
+
+            new MTLLoader( manager )
+                .load( '../obj/10014_dolphin_v2_max2011_it2.mtl', function ( materials ) {
+
+                    materials.preload();
+                   
+                     new OBJLoader( manager )
+                        .setMaterials( materials )
+                        .load( '../obj/10014_dolphin_v2_max2011_it2.obj', function ( object ) {
+
+                            object.scale.set(.5,.5,.5);
+                            scene.add( object );
+                            dolphin = object;
+                        }, onProgress, onError );
+
+                } );
+            
+                
+            
+
+            var helper = new THREE.AxesHelper(50);
+            //按键控制-坐标轴显示
+            document.getElementById("showA").onclick = function (event){
+                scene.add(helper);
+            };
+            document.getElementById("hideA").onclick = function (event){
+                scene.remove(helper);
+            };
+
+            document.getElementById("dive").onclick = function(event){
+                dive = !dive;
+            };
+
+            //动物坐标系运动
+            document.getElementById("turnLeft").onclick = function (event){
+
+                dolphin.rotation.z += 0.1;
+            };
+
+            document.getElementById("turnRight").onclick = function (event){
+                dolphin.rotation.z -= 0.1;
+            }
+
+            document.getElementById("turnUp").onclick = function (event){
+                dolphin.rotation.x += 0.1;
+            }
+
+            document.getElementById("turnDown").onclick = function (event){
+                dolphin.rotation.x -= 0.1;
+            }
+
+            document.getElementById("advance").onclick = function(event){
+                dolphin.rotation.y += 0.1;
+            }
+
+            document.getElementById("back").onclick = function(event){
+                dolphin.rotation.y -= 0.1;
+            }
+            //世界坐标系平移
+            document.getElementById("up").onclick = function (event){
+                    dolphin.position.y +=1;
+                };
+            document.getElementById("down").onclick = function (event){
+                dolphin.position.y -=1;
+
+            };
+            document.getElementById("left").onclick = function (event){
+                dolphin.position.x -=1;
+            };
+            document.getElementById("right").onclick = function (event){
+                dolphin.position.x +=1;
+            };
+            document.getElementById("forward").onclick = function (event){
+                dolphin.position.z -=1;
+            };
+            document.getElementById("backward").onclick = function (event){
+                dolphin.position.z +=1;
+            };
+            //世界坐标系旋转
+            document.getElementById("xRotate").onclick = function (event){
+                var axis = new THREE.Vector3(1,0,0);//x轴
+                dolphin.rotateOnAxis(axis,Math.PI/12);//绕x轴旋转π/12
+            };
+            document.getElementById("yRotate").onclick = function (event){
+                var axis = new THREE.Vector3(0,1,0);//y轴
+                dolphin.rotateOnAxis(axis,Math.PI/12);//绕y轴旋转π/12
+            };
+            document.getElementById("zRotate").onclick = function (event) {
+                var axis = new THREE.Vector3(0, 0, 1);//z轴
+                dolphin.rotateOnAxis(axis, Math.PI / 12);//绕z轴旋转π/12
+            };
+
+            document.getElementById("reset").onclick = function (event){
+                dolphin.position.set( 0, 0, 0 );
+                dolphin.rotation.set(0,0,0);
+            };
+            //按键控制-视点交互
+            document.getElementById("self").onclick = function (event){//聚焦立方体
+
+                controls.target = new THREE.Vector3(100,0,0);
+                controls.update();
+                console.log(controls.target);
+            };
+            document.getElementById("initpoint").onclick = function (event){//聚焦原点
+                //camera.lookAt(new THREE.Vector3(1000, 0, 0));
+                controls.target = new THREE.Vector3(0,0,0);
+                controls.update();
+                console.log(controls.target);
+            };
+            window.onkeydown = function( event ) {
+                var keycode = event.keyCode;
+                
+                switch( keycode){
+                    case 38://向上按键
+                        camera.position.z -=5;
+                        break;
+                    case 40 ://向下按键
+                        camera.position.z +=5;
+                        break;
+                    case 37 ://向左按键
+                        camera.position.x -=5;
+                        break;
+                    case 39://向右按键
+                        camera.position.x +=5;
+                        break;
+                    // case 188 ://向前按键 <
+                    //     dolphin.position.z -=1;
+                    //     break;
+                    // case 190://向后按键 >
+                    //     dolphin.position.z +=1;
+                    //     break;
+                    // case 49://绕x轴旋转 1 
+                    //     var axis = new THREE.Vector3(1,0,0);//x轴
+                    //     dolphin.rotateOnAxis(axis,Math.PI/12);//绕x轴旋转π/12
+                    // case 50://绕y轴旋转 2 
+                    //     var axis = new THREE.Vector3(0,1,0);//y轴
+                    //     dolphin.rotateOnAxis(axis,Math.PI/12);//绕y轴旋转π/12
+                    // case 51://绕z轴旋转 3
+                    //     var axis = new THREE.Vector3(0,0,1);//z轴
+                    //     dolphin.rotateOnAxis(axis,Math.PI/12);//绕z轴旋转π/12
+                };
+                
+        };
+
+
+            window.addEventListener( 'resize', onWindowResize, false );
+
+        }
+
+        function onWindowResize() {
+
+            windowHalfX = window.innerWidth / 2;
+            windowHalfY = window.innerHeight / 2;
+
+            camera.aspect = window.innerWidth / window.innerHeight;
+            //camera.updateProjectionMatrix();
+
+            renderer.setSize( window.innerWidth, window.innerHeight );
+
+        }
+
+
+
+        //
+        function Dive(){
+            const time = performance.now() * 0.001;
+            dolphin.position.y = Math.sin( time ) * 20 + 5;
+            dolphin.rotation.x = time * 0.5;
+            dolphin.position.z = Math.sin( time ) * 20 + 5;
+        }
+
+
+        function onDocumentMouseDown(event) {}
+        function onDocumentMouseMove(event) {}
+        function onDocumentMouseUp(event) {}
+
+        // 控制器 
+        function initControls() {
+            controls = new OrbitControls( camera, renderer.domElement );
+            controls.target.set( 0, 0.5, 0 );
+            controls.enablePan = false;
+        }
+
+        function animate() {
+            requestAnimationFrame( animate );
+            // var delta = 1 * clock.getDelta();
+            controls.update();
+            render();
+			stats.update();
+        }
+
+        function light(){//红光
+        var spotLight = new THREE.SpotLight( 0xDC143C, 1, 0 );
+        spotLight.position.set( 0, 200, 0 );
+        scene.add( spotLight );
+
+        document.getElementById("sliderX").onchange = function(event) {
+            spotLight.position.setX(event.target.value);
+        };
+        document.getElementById("sliderY").onchange = function(event) {
+            spotLight.position.setY(event.target.value);
+        };
+        document.getElementById("sliderZ").onchange = function(event) {
+            spotLight.position.setZ(event.target.value);
+        };
+        }
+        
+
+        function render() {
+
+            const time = performance.now() * 0.001;
+            water.material.uniforms[ 'time' ].value += 1.0 / 60.0;
+            
+            if(dive)
+            {
+                Dive();
+            }
+            renderer.render( scene, camera );
+
+        }
+    </script>
+
+    <div id="footer">
+        制作@南宋程序员
+    </div>
+</body>
+</html>

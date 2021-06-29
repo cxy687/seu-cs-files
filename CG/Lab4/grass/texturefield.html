@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+
+    <style type="text/css">
+        body, html, #all {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            margin: 0;
+            font-family: "宋体";
+        }
+        #header {
+            position: absolute;
+            background-color: rgb(238, 83, 130);
+            color: white;
+            text-align: center;
+            top:0px;
+            height: 50px;
+            width: 100%;
+            padding: 1px;
+        }
+        #view{
+            position: absolute;
+            top:55px;
+            left: 300px;
+            height: 40px;
+        }
+        #sp{
+            position: absolute;
+            top:60px;
+            width: 300px; 
+            left: 5px;
+            padding: 8px;
+            text-align: center;
+            }
+        #move{
+            position: absolute;
+            top: 100px;
+            width: 300px;
+            left: 5px;
+            padding: 6px;
+            text-align: center;
+        }
+        #box{
+            position: absolute;
+            top:110px;
+            left:5px;
+            padding: 8px;
+            width:200px;
+            height:9px;
+            text-align: center;
+            color: #fff;
+        }
+        #ctr{
+            position: absolute;
+            top:200px;
+            left: 0px;
+            width: 200px; 
+            padding: 8px;
+            text-align: center;
+            color: #fff;
+            font-family: "宋体";
+        }
+        #footer {
+            background-color: rgb(238, 83, 130);
+            color: white;
+            text-align: center;
+            padding: 2px;
+            position: absolute;
+            width: 100%;
+            bottom: 0;
+        }
+        #note{
+            position: absolute;
+            bottom:15px;
+            width: 200px; 
+            padding: 8px;
+            text-align: center;
+            color: #fff;
+        }
+    </style>
+</head>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+
+attribute  vec4 vPosition;
+uniform mat4 cmt;
+
+attribute vec4 vNormal;
+
+uniform mat4 modelViewMatrix;
+uniform mat3 normalMatrix;
+
+varying vec3 R;
+
+attribute vec2 a_texcoord;
+varying vec2 v_texcoord;
+
+void main()
+{
+	gl_Position =  modelViewMatrix * cmt * vPosition;
+	vec3 eyePos  = (modelViewMatrix * cmt * vPosition).xyz;
+    vec3 N = normalize(normalMatrix * vNormal.xyz);
+    R = reflect(eyePos, N);
+    // Pass the texcoord to the fragment shader.
+    v_texcoord = a_texcoord;
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+
+precision mediump float;
+// varying vec3 R;
+// Passed in from the vertex shader.
+varying vec2 v_texcoord;
+uniform sampler2D textureMap;
+
+void main()
+{
+    gl_FragColor = texture2D(textureMap,v_texcoord);
+}
+</script>
+
+<script type="text/javascript" src="../Common/webgl-utils.js"></script>
+<script type="text/javascript" src="../Common/initShaders.js"></script>
+<script type="text/javascript" src="../Common/MV.js"></script>
+<script type="text/javascript" src="texturefield.js"></script>
+
+<body>
+    <div id="header">
+        <h3>Galaxy-cube</h3>
+    </div>
+    <div id="sp">
+        <button id="shiftright">shiftright</button>
+        <button id="shiftleft">shiftleft</button>
+        <button id="up">up</button>
+        <button id="down">down</button>
+    </div>
+
+<div><text>object rotate</text></div>
+<div id="move">
+    <text>x -180</text><input id="rotate_object_X" type="range" min="0" max="3600" step="1" value="1800" /><text>180</text>
+    <br/>
+    <text>y -180</text><input id="rotate_object_Y" type="range" min="0" max="3600" step="1" value="1800" /><text>180</text>
+    <br/>
+    <text>z -180</text><input id="rotate_object_Z" type="range" min="0" max="3600" step="1" value="1800" /><text>180</text>
+</div>
+
+<canvas id="gl-canvas" width="512" height="512">
+Oops ... your browser doesn't support the HTML5 canvas element
+</canvas>
+<img id="textureGalaxy" src="../src/galaxy.jpg" hidden alt="Galaxy">
+<br/>
+<div id="footer">
+    制作@南宋程序员
+</div>
+</body>
+</html>
